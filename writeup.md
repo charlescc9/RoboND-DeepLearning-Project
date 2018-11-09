@@ -30,39 +30,39 @@ as the input image. The decoder often also uses skip connections to integrate en
 previous decoder layer. This encoder-decoder architecture works very well for semantic segmentation because is achieves
 both object recognition and segmentation of those objects within the original image. In general, encoder and decoding
 images should be used whenever information needs to be extracted from the image while also localized within it. The largest
-problem that may occur when using this encoder-decoder architecture is that it may lead to very large networks that are
+problem that may occur when using this encoder-decoder architecture is that it may result in very large networks that are
 computationally expensive to train. 
 
 ##### 2.3 1x1 Convolution Layer
-Once of the main differences between FCNs and CNNs is the use of 1x1 convolution layer as opposed a fully connected layer.
+Onc of the main differences between FCNs and CNNs is the use of 1x1 convolution layer as opposed a fully connected layer.
 CNNs use one or more fully connected layer after all the convolution layers and subsequently perform softmax operation
 in order to get class probabilities. However, using a fully connected layer requires flattening the convolutional layers's output
 from 4 dimensions to 2 dimensions, which erases all spatial information. This is not an issue when using a CNN for 
 object classification, as the object's location within the image is not relevant. However, when performing semantic
 segmentation, the object's spatial information must be maintained in order to output a accurate per-pixel segmented image.
-A 1x1 convolution is used instead. A 1x1 convolution is simply one with a kernel and stride sizes of 1, which results 
-in an output with the same height and width. This provides the model with dimensionality reduction without losing spatial
-information. Consequently, fully connected layers are useful when doing classification tasks that don't require spatial
-information, with 1x1 convolutions are useful when reducing dimensionality while preserving spatial information, for
+Consequently, a 1x1 convolution is used instead. A 1x1 convolution is simply a convolution with a kernel and stride sizes of 1, which results 
+in an output with the same height and width but different depth. This provides the model with a change in dimensionality without losing spatial
+information. In general, fully connected layers are useful when doing classification tasks that don't require spatial
+information, while 1x1 convolutions are useful for changing dimensionality while preserving spatial information, for
 example when performing semantic segmentation.
 
-##### 2.2 Layers and Parameter Choices 
+##### 2.4 Layers and Parameter Choices 
 The FCN architecture can be divided into two main parts: encoder and decode. The encoder has 3 traditional convolutional layers with 
-kernel size of 3 and a stride size of 2 followed by batch normalization. This increases the depth but halves the width 
+kernel size of 3 and a stride size of 2. This increases the depth but halves the width 
 and height at each layer, taking the shape from the image's original (128, 128, 3) to (16, 16, 128). The encoder is then
 followed by a 1x1 convolution layer. The first three layers utilize separable convolutional layers, which perform only
 one convolution for each input channel. This reduces the FCN's total number of parameters greatly, thus speeding up training.
 Each layer (as well as the decoder layers) also utilize batch normalization, which is the process of normalizing, or 
 reducing variance, for each minibatch during training. Batch normalization helps to regularize the network, which helps
-combat overfitting and speed training.
+combat overfitting and speeds up convergence during training.
 
 The decoder has 3 upsampling layers that perform the inverse operations as the encoder's convolutions, doubling width and height and decreasing 
-depth. This is accomplished through bilinear upsampling, which created new pixels (in this case a 2x2 grid for each pixel)
-from a weighted average of the nearest known pixels. The decoder also performs skip connections by concatenating the 
+depth. This is accomplished through bilinear upsampling, which creates new pixels (in this case a 2x2 grid for each pixel)
+from a weighted average of the nearest known pixels. The decoder also utilizes skip connections by concatenating the 
 upsampled output from the previous layer with the output from the corresponding encoder layer. This helps the decoder
 maintain the encoder's extracted features when increasing dimensionality. Each decoder layer then performs two convolution
 layers with batch normalization to learn these features. Finally, The  output layer is another 1x1 convolution with an 
-output shape of (128, 128, 3), which matches the original image shape, allowing for accurate per-pixel semantic segmentation.
+output shape of (128, 128, 3), which matches the original image shape, allowing for per-pixel semantic segmentation.
 
 Concerning the architecture parameters, the kernel sizes was chosen simply based on a conventional value of 3 for the encoder and decoder
 and a necessary value of 1 for the 1x1 layers. The number of filters was largely chosen to be the largest number possible while the

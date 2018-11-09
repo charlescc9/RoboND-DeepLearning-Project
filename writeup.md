@@ -46,7 +46,12 @@ is the 1x1 layer, with increases the depth but leaves the width and height uncha
 layers that perform the inverse operation as the encoder's convolutions, doubling width and height and decreasing 
 depth. The decoder as performs skip connections by concatenating the upsampled output from the previous layer with the
 output from the corresponding encoder layer and then performing a convolution with batch normalization. Finally, The 
-output layer is another 1x1 convolution with an output shape of (128, 128, 3), which matches the original image shape. 
+output layer is another 1x1 convolution with an output shape of (128, 128, 3), which matches the original image shape.
+The stride size for each layer was chosen based on the desired shape change (2 for the encoder layers meant halving
+the width and height.) The filter size was chosen simply based on a conventional value of 3 for the encoder and decoder
+and necessary 1 for the 1x1 layers. The number of filters was largely chosen to be the largest number possible that the
+FCN could fit on GPU memory. The number of encoder and decoder layers, 3, was a hyperparameter that was chosen 
+experimentally. 
 
 #### 3. Hyperparameter Choices
 Hyperparameter | Value
@@ -62,7 +67,13 @@ During the training process, a number of hyperparameters were tuned in order to 
 was performed largely by intuition and brute force. The learning rate ended up being a relatively large 0.01 (the
 default value of the Adam optimizer used is 0.001). This large learning rate may indicate a relative low variance in
 the data and lack of local minima. The batch size, on the other hand, worked best as a relatively small 32. This small
-batch size along a high number of steps per training epoch (200 being mych )   
+batch size along a relatively high number of steps per training epoch (200 being higher than 130, which is the
+conventional training set size divided by the batch size) and decently high number of epochs, 25, means that the FCN
+needed to train on many minibatches to converge optimally. The final two hyperparameters, number of steps per epoch for
+validation and number of workers, were system parameters that did not actually affect training.  
 
-### 4. Discussion
-Todo
+### 4. Results and Discussion
+This FCN achieved a final 42% IoU on the evaluation dataset. The FCN would have probably performed better given more 
+training data and a deeper network. This FCN architecture is generic in that it would work well if asked ot recognize
+objects other than humans. The data however, as it was specifically labeled with the pixel positions of humans, would
+not generalize at all to other objects and would require relabeling.

@@ -1,32 +1,14 @@
 ## Project: Follow Me
 
-#### 1. Background
+#### 1. Introduction
 The goal of this project was to train a quadcopter to locate and follow a specific human (in simulation).
 Accomplishing this goal required performing semantic segmentation on the images captured by the quadcopter's camera.
 Semantic segmentation is the process of identifying which individual pixels within an image belong to specific objects
 (in this case people, and more specifically the person whom the quadcopter is following). The current state-of-the-art 
 technique for semantic segmentation is a fully convolutional network (FCN). 
 
-FCNs work very well for semantic segmentation because they simultaneously perform object recognition, similarly to
-regular convolutional neural networks (CNNs), and locate those objects at specific pixel locations in the image. 
-This is accomplished by using an encoder-decoder architecture in which the image is first encoded into a high-level 
-representation suitable for object recognition, and then decoded back into the same size as the image while maintaining 
-the objects's spatial locations.
-
-FCNs are very similar to CNNs, but there are a few different techniques used when build the layers of a FCN. The main
-difference is the use of a 1x1 convolutional layer as opposed to fully connected layers.
-This change is made in order to maintain spatial information; when a fully connected layer is used at the end of a CNN,
-the output is flattened from 4 dimensions to 2 dimensions, which effectively erases all spatial information. A 1x1
-convolution, on the other hand, will perform the same full transformation between all neurons, while maintaining the 
-same shape and therefore conserving spatial information. Therefore, while a
-fully connected layer is very helpful for simple object recognition, a 1x1 convolutional layer is very useful for
-semantic segmentation. Another difference is the use of upsampling in the decoder to get the encoder's output back to
-the same size as the original image. The final difference is the use of skip connections in the decoder, which help the 
-FCN to learn where the detected objects are within the image by combining feature rich information from the encoder 
-with the higher dimensional decoder layers. All of these specific techniques were used to create a high performing FCN
-for semantic segmentation.  
-
 #### 2. Architecture
+##### 2.1 Summary Table
 Layer | Type | Filters | Kernel | Stride | Shape Change
 --- | --- | --- | --- | --- | ---
 1 | Encoder | 32 | 3 | 2 | (128, 128, 3) &rarr; (64, 64, 32)
@@ -38,14 +20,49 @@ Layer | Type | Filters | Kernel | Stride | Shape Change
 7 | Decoder | 32 | 3 | 1 | (64, 64, 64) &rarr; (128, 128, 32)
 8 | Output | 3 | 1 | 1 | (128, 128, 32) &rarr; (128, 128, 3)
 
+##### 2.2 Encoder-Decoder Architecture for Image Manipulation
+FCNs work very well for semantic segmentation because they use an encoder-decoder architecture in which the image is first 
+encoded into a high-level representation suitable for object recognition, and then decoded back into the same size as 
+the image while maintaining the objects's spatial locations. The encoder is build by from multiple convolutional layers,
+ending with a 1x1 convolution, and extracts features from the image. The decoder is build from either transposed
+convolution layers or layers of upsampling followed by convolution, producing an output with the same dimensionality
+as the input image. The decoder often also uses skip connections to integrate encoder feature information with the 
+previous decoder layer. This encoder-decoder architecture works very well for semantic segmentation because is achieves
+both object recognition and segmentation of those objects within the original image. In general, encoder and decoding
+images should be used whenever information needs to be extracted from the image while also localized within it. The largest
+problem that may occur when using this encoder-decoder architecture is that it may lead to very large networks that are
+computationally expensive to train. 
+
+##### 2.3 1x1 Convolution Layer
+Once of the main differences between FCNs and CNNs is the use of 1x1 convolution layer as opposed a fully connected layer.
+CNNs use one or more fully connected layer after all the convolution layers and subsequently perform softmax operation
+in order to get class probabilities. However, using a fully connected layer requires flattening the convolutional layers's output
+from 4 dimensions to 2 dimensions, which erases all spatial information. This is not an issue when using a CNN for 
+object classification, as the object's location within the image is not relevant. However, when performing semantic
+segmentation, the object's spatial information must be maintained in order to output a accurate per-pixel segmented image.
+A 1x1 convolution is used instead. A 1x1 convolution is simply one with a kernel and stride sizes of 1, which results 
+in an output with the same height and width. This provides the model with dimensionality reduction without losing spatial
+information. Consequently, fully connected layers are useful when doing classification tasks that don't require spatial
+information, with 1x1 convolutions are useful when reducing dimensionality while preserving spatial information, for
+example when performing semantic segmentation.
+
+##### 2.2 Layers and Parameter Choices 
 The FCN architecture can be divided into two main parts: encoder and decode. The encoder has 3 traditional convolutional layers with 
 kernel size of 3 and a stride size of 2 followed by batch normalization. This increases the depth but halves the width 
-and height at each layer, taking the shape from the image's original (128, 128, 3) to (16, 16, 128). After the encoder 
-is the 1x1 layer, with increases the depth but leaves the width and height unchanged. The decoder then has 3 upsampling
-layers that perform the inverse operations as the encoder's convolutions, doubling width and height and decreasing 
-depth. The decoder also performs skip connections by concatenating the upsampled output from the previous layer with the
-output from the corresponding encoder layer and then performing a convolution with batch normalization. Finally, The 
-output layer is another 1x1 convolution with an output shape of (128, 128, 3), which matches the original image shape.
+and height at each layer, taking the shape from the image's original (128, 128, 3) to (16, 16, 128). The encoder is then
+followed by a 1x1 convolution layer. The first three layers utilize separable convolutional layers, which perform only
+one convolution for each input channel. This reduces the FCN's total number of parameters greatly, thus speeding up training.
+Each layer (as well as the decoder layers) also utilize batch normalization, which is the process of normalizing, or 
+reducing variance, for each minibatch during training. Batch normalization helps to regularize the network, which helps
+combat overfitting and speed training.
+
+The decoder has 3 upsampling layers that perform the inverse operations as the encoder's convolutions, doubling width and height and decreasing 
+depth. This is accomplished through bilinear upsampling, which created new pixels (in this case a 2x2 grid for each pixel)
+from a weighted average of the nearest known pixels. The decoder also performs skip connections by concatenating the 
+upsampled output from the previous layer with the output from the corresponding encoder layer. This helps the decoder
+maintain the encoder's extracted features when increasing dimensionality. Each decoder layer then performs two convolution
+layers with batch normalization to learn these features. Finally, The  output layer is another 1x1 convolution with an 
+output shape of (128, 128, 3), which matches the original image shape, allowing for accurate per-pixel semantic segmentation.
 
 Concerning the architecture parameters, the kernel sizes was chosen simply based on a conventional value of 3 for the encoder and decoder
 and a necessary value of 1 for the 1x1 layers. The number of filters was largely chosen to be the largest number possible while the
@@ -71,7 +88,7 @@ conventional training set size divided by the batch size) and decently high numb
 needed to train on many minibatches to converge optimally. The final two hyperparameters, number of steps per epoch for
 validation and number of workers, were system parameters that did not actually affect training.  
 
-### 4. Discussion
+#### 4. Discussion
 This FCN achieved a final 42% IoU on the evaluation dataset. The FCN would have probably performed better given more 
 training data and a deeper architecture. This FCN architecture very generic, and would work well if asked to recognize
 objects other than humans. The data, however, was specifically labeled with the pixel positions of humans, and
